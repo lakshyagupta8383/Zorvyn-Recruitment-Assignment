@@ -134,8 +134,6 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await cleanup();
-  await pool.end();
-  await new Promise((resolve) => setImmediate(resolve));
 });
 
 describe("Records Integration", () => {

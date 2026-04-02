@@ -1,6 +1,7 @@
 const express = require("express");
 
 const authRoutes = require("./modules/auth/auth.routes");
+const categoriesRoutes = require("./modules/categories/categories.routes");
 const usersRoutes = require("./modules/users/users.routes");
 const recordsRoutes = require("./modules/records/records.routes");
 const errorHandler = require("./middlewares/error.middleware");
@@ -17,6 +18,7 @@ app.get("/", (req, res) => {
 
 // routes
 app.use("/auth", authRoutes);
+app.use("/categories", categoriesRoutes);
 app.use("/users", usersRoutes);
 app.use("/records", recordsRoutes);
 

@@ -15,8 +15,6 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await pool.end();
-  await new Promise(resolve => setImmediate(resolve));
 });
 
 describe("Auth Integration", () => {

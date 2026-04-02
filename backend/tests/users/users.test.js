@@ -114,8 +114,6 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await cleanupUsers();
-  await pool.end();
-  await new Promise((resolve) => setImmediate(resolve));
 });
 
 describe("Users Integration", () => {
