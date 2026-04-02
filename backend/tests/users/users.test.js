@@ -114,8 +114,11 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await cleanupUsers();
-  await releaseDbSuite();
+  try {
+    await cleanupUsers();
+  } finally {
+    await releaseDbSuite();
+  }
 });
 
 describe("Users Integration", () => {

@@ -118,8 +118,11 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await cleanup();
-  await releaseDbSuite();
+  try {
+    await cleanup();
+  } finally {
+    await releaseDbSuite();
+  }
 });
 
 describe("Categories Integration", () => {
