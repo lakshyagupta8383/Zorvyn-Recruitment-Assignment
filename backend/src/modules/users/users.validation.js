@@ -1,6 +1,7 @@
 const { z } = require("zod");
+const { ROLE_VALUES } = require("../../constants/roles");
 
-const userRoleSchema = z.enum(["viewer", "analyst", "admin"]);
+const userRoleSchema = z.enum(ROLE_VALUES);
 const userStatusSchema = z.enum(["active", "inactive"]);
 
 const createUserSchema = z.object({

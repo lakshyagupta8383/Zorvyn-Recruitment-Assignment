@@ -18,6 +18,12 @@ const viewerUser = {
   password: "viewerpass123",
 };
 
+const analystUser = {
+  name: "Analyst User",
+  email: "analyst.integration@example.com",
+  password: "analystpass123",
+};
+
 const managedUser = {
   name: "Managed User",
   email: "managed.integration@example.com",
@@ -26,14 +32,16 @@ const managedUser = {
 
 let adminToken;
 let viewerToken;
+let analystToken;
 let viewerRoleId;
+let analystRoleId;
 let adminRoleId;
 let managedUserId;
 
 const cleanupUsers = async () => {
   await pool.query(
     "DELETE FROM users WHERE email = ANY($1::text[])",
-    [[adminUser.email, viewerUser.email, managedUser.email]]
+    [[adminUser.email, viewerUser.email, analystUser.email, managedUser.email]]
   );
 };
 
@@ -54,14 +62,15 @@ const createUserByRole = async ({ name, email, password, roleId }) => {
 
 beforeAll(async () => {
   const roles = await pool.query(
-    "SELECT id, LOWER(name) AS name FROM roles WHERE LOWER(name) IN ('viewer', 'admin')"
+    "SELECT id, LOWER(name) AS name FROM roles WHERE LOWER(name) IN ('viewer', 'analyst', 'admin')"
   );
 
   const roleMap = Object.fromEntries(roles.rows.map((row) => [row.name, row.id]));
   viewerRoleId = roleMap.viewer;
+  analystRoleId = roleMap.analyst;
   adminRoleId = roleMap.admin;
 
-  if (!viewerRoleId || !adminRoleId) {
+  if (!viewerRoleId || !analystRoleId || !adminRoleId) {
     throw new Error("Required roles are missing");
   }
 
@@ -77,6 +86,11 @@ beforeAll(async () => {
     roleId: viewerRoleId,
   });
 
+  await createUserByRole({
+    ...analystUser,
+    roleId: analystRoleId,
+  });
+
   const adminLogin = await request(app)
     .post("/auth/login")
     .send({ email: adminUser.email, password: adminUser.password });
@@ -88,6 +102,14 @@ beforeAll(async () => {
     .send({ email: viewerUser.email, password: viewerUser.password });
 
   viewerToken = viewerLogin.body?.data?.token;
+
+  const analystLogin = await request(app)
+    .post("/auth/login")
+    .send({ email: analystUser.email, password: analystUser.password });
+
+  analystToken = analystLogin.body?.data?.token;
+
+  expect(analystToken).toBeDefined();
 });
 
 afterAll(async () => {
@@ -101,6 +123,14 @@ describe("Users Integration", () => {
     const res = await request(app)
       .get("/users")
       .set("Authorization", `Bearer ${viewerToken}`);
+
+    expect(res.statusCode).toBe(403);
+  });
+
+  test("analyst cannot access users module", async () => {
+    const res = await request(app)
+      .get("/users")
+      .set("Authorization", `Bearer ${analystToken}`);
 
     expect(res.statusCode).toBe(403);
   });

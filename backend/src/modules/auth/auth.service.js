@@ -1,6 +1,7 @@
 const pool = require("../../db/pool");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+const { ROLES } = require("../../constants/roles");
 
 const register = async ({ name, email, password }) => {
   const existing = await pool.query(
@@ -15,7 +16,8 @@ const register = async ({ name, email, password }) => {
   const hashed = await bcrypt.hash(password, 10);
 
   const roleRes = await pool.query(
-    "SELECT id FROM roles WHERE LOWER(name) = 'viewer'"
+    "SELECT id FROM roles WHERE LOWER(name) = $1",
+    [ROLES.VIEWER]
   );
 
   const roleId = roleRes.rows[0].id;
