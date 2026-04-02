@@ -1,6 +1,7 @@
 const express = require("express");
 
 const authRoutes = require("./modules/auth/auth.routes");
+const usersRoutes = require("./modules/users/users.routes");
 const errorHandler = require("./middlewares/error.middleware");
 
 const app = express();
@@ -15,6 +16,7 @@ app.get("/", (req, res) => {
 
 // routes
 app.use("/auth", authRoutes);
+app.use("/users", usersRoutes);
 
 // error handler (must be last)
 app.use(errorHandler);
