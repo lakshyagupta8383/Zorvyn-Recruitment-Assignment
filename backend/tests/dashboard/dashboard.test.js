@@ -49,19 +49,39 @@ const cleanup = async () => {
       )
     `,
     [
-      [adminUser.email, analystUser.email, viewerUser.email],
-      ["Dashboard Income", "Dashboard Expense"],
+      [
+        adminUser.email,
+        analystUser.email,
+        viewerUser.email,
+        "admin@zorvyn.com",
+        "analyst@zorvyn.com",
+        "viewer@zorvyn.com",
+      ],
+      [
+        "Dashboard Income",
+        "Dashboard Expense",
+        "Salary",
+        "Expenses",
+        "Investments",
+      ],
     ]
   );
 
   await pool.query(
     "DELETE FROM categories WHERE name = ANY($1::text[])",
-    [["Dashboard Income", "Dashboard Expense"]]
+    [["Dashboard Income", "Dashboard Expense", "Salary", "Expenses", "Investments"]]
   );
 
   await pool.query(
     "DELETE FROM users WHERE email = ANY($1::text[])",
-    [[adminUser.email, analystUser.email, viewerUser.email]]
+    [[
+      adminUser.email,
+      analystUser.email,
+      viewerUser.email,
+      "admin@zorvyn.com",
+      "analyst@zorvyn.com",
+      "viewer@zorvyn.com",
+    ]]
   );
 };
 

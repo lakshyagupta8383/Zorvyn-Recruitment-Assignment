@@ -232,14 +232,12 @@ describe("Records Integration", () => {
     adminRecordId = res.body.data.id;
   });
 
-  test("viewer only sees own records in list", async () => {
+  test("viewer cannot read records list", async () => {
     const res = await request(app)
       .get("/records")
       .set("Authorization", `Bearer ${viewerToken}`);
 
-    expect(res.statusCode).toBe(200);
-    expect(res.body.data.length).toBe(1);
-    expect(res.body.data[0].id).toBe(viewerRecordId);
+    expect(res.statusCode).toBe(403);
   });
 
   test("admin sees all records in list", async () => {
@@ -261,6 +259,24 @@ describe("Records Integration", () => {
     expect(res.body.data.some((record) => record.id === analystRecordId)).toBe(true);
   });
 
+  test("analyst can fetch a record by id", async () => {
+    const res = await request(app)
+      .get(`/records/${analystRecordId}`)
+      .set("Authorization", `Bearer ${analystToken}`);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.data.id).toBe(analystRecordId);
+  });
+
+  test("viewer cannot search records", async () => {
+    const res = await request(app)
+      .get("/records/search")
+      .query({ q: "integration" })
+      .set("Authorization", `Bearer ${viewerToken}`);
+
+    expect(res.statusCode).toBe(403);
+  });
+
   test("search returns matching record", async () => {
     const res = await request(app)
       .get("/records/search")
@@ -279,6 +295,14 @@ describe("Records Integration", () => {
 
     expect(res.statusCode).toBe(200);
     expect(Array.isArray(res.body.data)).toBe(true);
+  });
+
+  test("viewer cannot fetch a record", async () => {
+    const res = await request(app)
+      .get(`/records/${viewerRecordId}`)
+      .set("Authorization", `Bearer ${viewerToken}`);
+
+    expect(res.statusCode).toBe(403);
   });
 
   test("viewer cannot update records", async () => {

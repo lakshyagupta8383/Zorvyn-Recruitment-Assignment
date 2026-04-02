@@ -8,9 +8,9 @@ const router = express.Router();
 
 router.use(authMiddleware);
 
-router.get("/search", controller.searchRecords);
-router.get("/", controller.listRecords);
-router.get("/:id", controller.getRecord);
+router.get("/search", requireRole("analyst", "admin"), controller.searchRecords);
+router.get("/", requireRole("analyst", "admin"), controller.listRecords);
+router.get("/:id", requireRole("analyst", "admin"), controller.getRecord);
 router.post("/", requireRole("admin"), controller.createRecord);
 router.patch("/:id", requireRole("admin"), controller.updateRecord);
 router.delete("/:id", requireRole("admin"), controller.deleteRecord);
