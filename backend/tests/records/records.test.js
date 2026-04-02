@@ -31,14 +31,18 @@ let analystToken;
 let adminRoleId;
 let viewerRoleId;
 let analystRoleId;
+let adminId;
+let viewerId;
+let analystId;
 let categoryId;
 let adminRecordId;
 let viewerRecordId;
+let analystRecordId;
 
 const cleanup = async () => {
   await pool.query(
-    "DELETE FROM records WHERE notes LIKE $1 OR notes LIKE $2",
-    ["%records integration%", "%viewer record%"]
+    "DELETE FROM records WHERE notes LIKE $1",
+    ["%records integration%"]
   );
   await pool.query(
     "DELETE FROM categories WHERE name = ANY($1::text[])",
@@ -64,6 +68,19 @@ const createUser = async ({ name, email, password, roleId }) => {
   return result.rows[0].id;
 };
 
+const createRecord = async ({ amount, type, categoryId, date, notes, createdBy }) => {
+  const result = await pool.query(
+    `
+      INSERT INTO records (amount, type, category_id, date, notes, created_by)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING id
+    `,
+    [amount, type, categoryId, date, notes, createdBy]
+  );
+
+  return result.rows[0].id;
+};
+
 beforeAll(async () => {
   const roles = await pool.query(
     "SELECT id, LOWER(name) AS name FROM roles WHERE LOWER(name) IN ('viewer', 'analyst', 'admin')"
@@ -79,17 +96,17 @@ beforeAll(async () => {
 
   await cleanup();
 
-  const adminId = await createUser({
+  adminId = await createUser({
     ...adminUser,
     roleId: adminRoleId,
   });
 
-  const viewerId = await createUser({
+  viewerId = await createUser({
     ...viewerUser,
     roleId: viewerRoleId,
   });
 
-  const analystId = await createUser({
+  analystId = await createUser({
     ...analystUser,
     roleId: analystRoleId,
   });
@@ -131,6 +148,33 @@ beforeAll(async () => {
   expect(adminToken).toBeDefined();
   expect(viewerToken).toBeDefined();
   expect(analystToken).toBeDefined();
+
+  viewerRecordId = await createRecord({
+    amount: 125.5,
+    type: "expense",
+    categoryId,
+    date: "2024-01-10",
+    notes: "viewer record for records integration",
+    createdBy: viewerId,
+  });
+
+  analystRecordId = await createRecord({
+    amount: 75,
+    type: "expense",
+    categoryId,
+    date: "2024-01-12",
+    notes: "analyst record for records integration",
+    createdBy: analystId,
+  });
+
+  adminRecordId = await createRecord({
+    amount: 250,
+    type: "income",
+    categoryId,
+    date: "2024-01-11",
+    notes: "admin record for records integration",
+    createdBy: adminId,
+  });
 });
 
 afterAll(async () => {
@@ -142,7 +186,7 @@ afterAll(async () => {
 });
 
 describe("Records Integration", () => {
-  test("viewer can create their own record", async () => {
+  test("viewer cannot create records", async () => {
     const res = await request(app)
       .post("/records")
       .set("Authorization", `Bearer ${viewerToken}`)
@@ -151,13 +195,25 @@ describe("Records Integration", () => {
         type: "expense",
         category_id: categoryId,
         date: "2024-01-10",
-        notes: "viewer record for records integration",
+        notes: "viewer create forbidden for records integration",
       });
 
-    expect(res.statusCode).toBe(201);
-    expect(res.body.data.amount).toBe("125.50");
-    expect(res.body.data.type).toBe("expense");
-    viewerRecordId = res.body.data.id;
+    expect(res.statusCode).toBe(403);
+  });
+
+  test("analyst cannot create records", async () => {
+    const res = await request(app)
+      .post("/records")
+      .set("Authorization", `Bearer ${analystToken}`)
+      .send({
+        amount: 125.5,
+        type: "expense",
+        category_id: categoryId,
+        date: "2024-01-10",
+        notes: "analyst create forbidden for records integration",
+      });
+
+    expect(res.statusCode).toBe(403);
   });
 
   test("admin can create a record", async () => {
@@ -165,11 +221,11 @@ describe("Records Integration", () => {
       .post("/records")
       .set("Authorization", `Bearer ${adminToken}`)
       .send({
-        amount: 250,
+        amount: 300,
         type: "income",
         category_id: categoryId,
-        date: "2024-01-11",
-        notes: "admin record for records integration",
+        date: "2024-01-13",
+        notes: "admin api record for records integration",
       });
 
     expect(res.statusCode).toBe(201);
@@ -186,13 +242,13 @@ describe("Records Integration", () => {
     expect(res.body.data[0].id).toBe(viewerRecordId);
   });
 
-  test("admin sees both records in list", async () => {
+  test("admin sees all records in list", async () => {
     const res = await request(app)
       .get("/records")
       .set("Authorization", `Bearer ${adminToken}`);
 
     expect(res.statusCode).toBe(200);
-    expect(res.body.data.length).toBeGreaterThanOrEqual(2);
+    expect(res.body.data.length).toBeGreaterThanOrEqual(3);
   });
 
   test("analyst can list records", async () => {
@@ -202,6 +258,7 @@ describe("Records Integration", () => {
 
     expect(res.statusCode).toBe(200);
     expect(Array.isArray(res.body.data)).toBe(true);
+    expect(res.body.data.some((record) => record.id === analystRecordId)).toBe(true);
   });
 
   test("search returns matching record", async () => {
@@ -224,7 +281,7 @@ describe("Records Integration", () => {
     expect(Array.isArray(res.body.data)).toBe(true);
   });
 
-  test("viewer can update own record", async () => {
+  test("viewer cannot update records", async () => {
     const res = await request(app)
       .patch(`/records/${viewerRecordId}`)
       .set("Authorization", `Bearer ${viewerToken}`)
@@ -232,14 +289,44 @@ describe("Records Integration", () => {
         notes: "viewer record updated for records integration",
       });
 
+    expect(res.statusCode).toBe(403);
+  });
+
+  test("analyst cannot update records", async () => {
+    const res = await request(app)
+      .patch(`/records/${analystRecordId}`)
+      .set("Authorization", `Bearer ${analystToken}`)
+      .send({
+        notes: "analyst record updated for records integration",
+      });
+
+    expect(res.statusCode).toBe(403);
+  });
+
+  test("viewer cannot delete records", async () => {
+    const res = await request(app)
+      .delete(`/records/${viewerRecordId}`)
+      .set("Authorization", `Bearer ${viewerToken}`);
+
+    expect(res.statusCode).toBe(403);
+  });
+
+  test("admin can update a record", async () => {
+    const res = await request(app)
+      .patch(`/records/${adminRecordId}`)
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({
+        notes: "admin record updated for records integration",
+      });
+
     expect(res.statusCode).toBe(200);
     expect(res.body.data.notes).toContain("updated");
   });
 
-  test("viewer can soft delete own record", async () => {
+  test("admin can soft delete a record", async () => {
     const res = await request(app)
-      .delete(`/records/${viewerRecordId}`)
-      .set("Authorization", `Bearer ${viewerToken}`);
+      .delete(`/records/${adminRecordId}`)
+      .set("Authorization", `Bearer ${adminToken}`);
 
     expect(res.statusCode).toBe(200);
     expect(res.body.data.deleted).toBe(true);

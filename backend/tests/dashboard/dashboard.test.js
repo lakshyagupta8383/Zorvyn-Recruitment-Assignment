@@ -31,6 +31,9 @@ let viewerToken;
 let adminRoleId;
 let analystRoleId;
 let viewerRoleId;
+let adminId;
+let analystId;
+let viewerId;
 let incomeCategoryId;
 let expenseCategoryId;
 
@@ -76,6 +79,19 @@ const createUser = async ({ name, email, password, roleId }) => {
   return result.rows[0].id;
 };
 
+const createRecord = async ({ amount, type, categoryId, date, notes, createdBy }) => {
+  const result = await pool.query(
+    `
+      INSERT INTO records (amount, type, category_id, date, notes, created_by)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING id
+    `,
+    [amount, type, categoryId, date, notes, createdBy]
+  );
+
+  return result.rows[0].id;
+};
+
 beforeAll(async () => {
   const roles = await pool.query(
     "SELECT id, LOWER(name) AS name FROM roles WHERE LOWER(name) IN ('viewer', 'analyst', 'admin')"
@@ -92,9 +108,9 @@ beforeAll(async () => {
 
   await cleanup();
 
-  const adminId = await createUser({ ...adminUser, roleId: adminRoleId });
-  await createUser({ ...analystUser, roleId: analystRoleId });
-  await createUser({ ...viewerUser, roleId: viewerRoleId });
+  adminId = await createUser({ ...adminUser, roleId: adminRoleId });
+  analystId = await createUser({ ...analystUser, roleId: analystRoleId });
+  viewerId = await createUser({ ...viewerUser, roleId: viewerRoleId });
 
   const incomeCategory = await pool.query(
     `
@@ -135,49 +151,41 @@ beforeAll(async () => {
   expect(analystToken).toBeDefined();
   expect(viewerToken).toBeDefined();
 
-  await request(app)
-    .post("/records")
-    .set("Authorization", `Bearer ${viewerToken}`)
-    .send({
-      amount: 100,
-      type: "income",
-      category_id: incomeCategoryId,
-      date: "2024-02-01",
-      notes: "dashboard viewer income",
-    });
+  await createRecord({
+    amount: 100,
+    type: "income",
+    categoryId: incomeCategoryId,
+    date: "2024-02-01",
+    notes: "dashboard viewer income",
+    createdBy: viewerId,
+  });
 
-  await request(app)
-    .post("/records")
-    .set("Authorization", `Bearer ${viewerToken}`)
-    .send({
-      amount: 20,
-      type: "expense",
-      category_id: expenseCategoryId,
-      date: "2024-02-02",
-      notes: "dashboard viewer expense",
-    });
+  await createRecord({
+    amount: 20,
+    type: "expense",
+    categoryId: expenseCategoryId,
+    date: "2024-02-02",
+    notes: "dashboard viewer expense",
+    createdBy: viewerId,
+  });
 
-  await request(app)
-    .post("/records")
-    .set("Authorization", `Bearer ${analystToken}`)
-    .send({
-      amount: 50,
-      type: "expense",
-      category_id: expenseCategoryId,
-      date: "2024-02-03",
-      notes: "dashboard analyst expense",
-    });
+  await createRecord({
+    amount: 50,
+    type: "expense",
+    categoryId: expenseCategoryId,
+    date: "2024-02-03",
+    notes: "dashboard analyst expense",
+    createdBy: analystId,
+  });
 
-  await request(app)
-    .post("/records")
-    .set("Authorization", `Bearer ${adminToken}`)
-    .send({
-      amount: 40,
-      type: "income",
-      category_id: incomeCategoryId,
-      date: "2024-02-04",
-      notes: "dashboard admin income",
-    });
+  await createRecord({
+    amount: 40,
+    type: "income",
+    categoryId: incomeCategoryId,
+    date: "2024-02-04",
+    notes: "dashboard admin income",
+    createdBy: adminId,
+  });
 });
 
 afterAll(async () => {

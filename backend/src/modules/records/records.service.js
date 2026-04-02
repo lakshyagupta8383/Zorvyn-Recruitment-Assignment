@@ -9,6 +9,11 @@ const normalizeRole = (role) => String(role || "").toLowerCase();
 
 const canReadAll = (user) => readAllRoles.has(normalizeRole(user.role));
 const canManageAll = (user) => manageAllRoles.has(normalizeRole(user.role));
+const ensureCanMutate = (user) => {
+  if (!canManageAll(user)) {
+    throw { status: 403, message: "Forbidden" };
+  }
+};
 
 const serializeRecord = (row) => {
   if (!row) return null;
@@ -246,6 +251,8 @@ const searchRecords = async ({ user, q, page, limit }) => {
 };
 
 const createRecord = async (data, user) => {
+  ensureCanMutate(user);
+
   return withTransaction(async (client) => {
     await getCategoryForUser(data.category_id, user, client);
 
@@ -263,15 +270,13 @@ const createRecord = async (data, user) => {
 };
 
 const updateRecord = async (id, updates, user) => {
+  ensureCanMutate(user);
+
   return withTransaction(async (client) => {
     const current = await getRecordById(id, user, { includeDeleted: true }, client);
 
     if (!current || current.deleted_at) {
       throw { status: 404, message: "Record not found" };
-    }
-
-    if (!canManageAll(user) && current.created_by !== user.id) {
-      throw { status: 403, message: "Forbidden" };
     }
 
     if (updates.category_id) {
@@ -328,15 +333,13 @@ const updateRecord = async (id, updates, user) => {
 };
 
 const deleteRecord = async (id, user) => {
+  ensureCanMutate(user);
+
   return withTransaction(async (client) => {
     const current = await getRecordById(id, user, { includeDeleted: true }, client);
 
     if (!current || current.deleted_at) {
       throw { status: 404, message: "Record not found" };
-    }
-
-    if (!canManageAll(user) && current.created_by !== user.id) {
-      throw { status: 403, message: "Forbidden" };
     }
 
     const result = await client.query(
