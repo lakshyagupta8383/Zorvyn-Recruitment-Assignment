@@ -1,6 +1,7 @@
 const request = require('supertest');
 const app = require('../../src/app');
 const pool = require('../../src/db/pool');
+const { releaseDbSuite } = require("../helpers/db-test-state");
 
 let token;
 jest.setTimeout(15000);
@@ -15,6 +16,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  await releaseDbSuite();
 });
 
 describe("Auth Integration", () => {

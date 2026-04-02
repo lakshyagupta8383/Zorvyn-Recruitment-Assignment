@@ -3,6 +3,7 @@ const bcrypt = require("bcrypt");
 
 const app = require("../../src/app");
 const pool = require("../../src/db/pool");
+const { releaseDbSuite } = require("../helpers/db-test-state");
 
 jest.setTimeout(20000);
 
@@ -134,6 +135,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await cleanup();
+  await releaseDbSuite();
 });
 
 describe("Records Integration", () => {

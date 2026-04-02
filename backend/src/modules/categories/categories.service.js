@@ -1,4 +1,5 @@
 const pool = require("../../db/pool");
+const withTransaction = require("../../db/transaction");
 
 const mapCategoryRow = (row) => {
   if (!row) return null;
@@ -14,8 +15,8 @@ const mapCategoryRow = (row) => {
   };
 };
 
-const getCategoryById = async (id) => {
-  const result = await pool.query(
+const getCategoryById = async (id, db = pool) => {
+  const result = await db.query(
     `
       SELECT
         c.id,
@@ -97,94 +98,117 @@ const listCategories = async ({ page, limit, search, is_system }) => {
 };
 
 const createCategory = async ({ name, is_system, created_by }) => {
-  const creatorId = created_by || null;
+  return withTransaction(async (client) => {
+    const creatorId = created_by || null;
 
-  if (!creatorId) {
-    throw { status: 400, message: "created_by is required" };
-  }
+    if (!creatorId) {
+      throw { status: 400, message: "created_by is required" };
+    }
 
-  const existing = await pool.query(
-    `
-      SELECT id
-      FROM categories
-      WHERE LOWER(name) = LOWER($1)
-        AND created_by = $2
-        AND is_system = $3
-    `,
-    [name, creatorId, is_system]
-  );
+    const existing = await client.query(
+      `
+        SELECT id
+        FROM categories
+        WHERE LOWER(name) = LOWER($1)
+          AND created_by = $2
+          AND is_system = $3
+      `,
+      [name, creatorId, is_system]
+    );
 
-  if (existing.rows.length) {
-    throw { status: 409, message: "Category already exists" };
-  }
+    if (existing.rows.length) {
+      throw { status: 409, message: "Category already exists" };
+    }
 
-  const result = await pool.query(
-    `
-      INSERT INTO categories (name, is_system, created_by)
-      VALUES ($1, $2, $3)
-      RETURNING id
-    `,
-    [name, is_system, creatorId]
-  );
+    let result;
+    try {
+      result = await client.query(
+        `
+          INSERT INTO categories (name, is_system, created_by)
+          VALUES ($1, $2, $3)
+          RETURNING id
+        `,
+        [name, is_system, creatorId]
+      );
+    } catch (err) {
+      if (err.code === "23505") {
+        throw { status: 409, message: "Category already exists" };
+      }
 
-  return getCategoryById(result.rows[0].id);
+      throw err;
+    }
+
+    return getCategoryById(result.rows[0].id, client);
+  });
 };
 
 const updateCategory = async (id, updates) => {
-  const current = await getCategoryById(id);
+  return withTransaction(async (client) => {
+    const current = await getCategoryById(id, client);
 
-  if (!current) {
-    throw { status: 404, message: "Category not found" };
-  }
+    if (!current) {
+      throw { status: 404, message: "Category not found" };
+    }
 
-  const fields = [];
-  const params = [];
-  let idx = 1;
+    const fields = [];
+    const params = [];
+    let idx = 1;
 
-  if (updates.name !== undefined) {
-    fields.push(`name = $${idx}`);
-    params.push(updates.name);
-    idx += 1;
-  }
+    if (updates.name !== undefined) {
+      fields.push(`name = $${idx}`);
+      params.push(updates.name);
+      idx += 1;
+    }
 
-  if (updates.is_system !== undefined) {
-    fields.push(`is_system = $${idx}`);
-    params.push(updates.is_system);
-    idx += 1;
-  }
+    if (updates.is_system !== undefined) {
+      fields.push(`is_system = $${idx}`);
+      params.push(updates.is_system);
+      idx += 1;
+    }
 
-  fields.push(`updated_at = NOW()`);
+    fields.push(`updated_at = NOW()`);
 
-  await pool.query(
-    `
-      UPDATE categories
-      SET ${fields.join(", ")}
-      WHERE id = $${idx}
-    `,
-    [...params, id]
-  );
+    try {
+      await client.query(
+        `
+          UPDATE categories
+          SET ${fields.join(", ")}
+          WHERE id = $${idx}
+        `,
+        [...params, id]
+      );
+    } catch (err) {
+      if (err.code === "23505") {
+        throw { status: 409, message: "Category already exists" };
+      }
 
-  return getCategoryById(id);
+      throw err;
+    }
+
+    return getCategoryById(id, client);
+  });
 };
 
 const deleteCategory = async (id) => {
-  let result;
+  return withTransaction(async (client) => {
+    let result;
 
-  try {
-    result = await pool.query("DELETE FROM categories WHERE id = $1 RETURNING id", [id]);
-  } catch (err) {
-    if (err.code === "23503") {
-      throw { status: 409, message: "Category cannot be deleted because it is referenced by records" };
+    try {
+      result = await client.query("DELETE FROM categories WHERE id = $1 RETURNING id", [id]);
+    } catch (err) {
+      if (err.code === "23503") {
+        throw { status: 409, message: "Category cannot be deleted because it is referenced by records" };
+      }
+
+      throw err;
     }
 
-    throw err;
-  }
+    if (!result.rows.length) {
+      throw { status: 404, message: "Category not found" };
+    }
 
-  if (!result.rows.length) {
-    throw { status: 404, message: "Category not found" };
-  }
-
-  return { deleted: true };
+    return { deleted: true };
+  });
 };
 
 module.exports = {

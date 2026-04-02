@@ -1,35 +1,50 @@
 const pool = require("../../db/pool");
+const withTransaction = require("../../db/transaction");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const { ROLES } = require("../../constants/roles");
 
 const register = async ({ name, email, password }) => {
-  const existing = await pool.query(
-    "SELECT id FROM users WHERE email = $1",
-    [email]
-  );
+  return withTransaction(async (client) => {
+    const existing = await client.query(
+      "SELECT id FROM users WHERE email = $1",
+      [email]
+    );
 
-  if (existing.rows.length) {
-    throw { status: 409, message: "Email already exists" };
-  }
+    if (existing.rows.length) {
+      throw { status: 409, message: "Email already exists" };
+    }
 
-  const hashed = await bcrypt.hash(password, 10);
+    const hashed = await bcrypt.hash(password, 10);
 
-  const roleRes = await pool.query(
-    "SELECT id FROM roles WHERE LOWER(name) = $1",
-    [ROLES.VIEWER]
-  );
+    const roleRes = await client.query(
+      "SELECT id FROM roles WHERE LOWER(name) = $1",
+      [ROLES.VIEWER]
+    );
 
-  const roleId = roleRes.rows[0].id;
+    const roleId = roleRes.rows[0]?.id;
 
-  const result = await pool.query(
-    `INSERT INTO users (name, email, password_hash, role_id)
-     VALUES ($1, $2, $3, $4)
-     RETURNING id, email`,
-    [name, email, hashed, roleId]
-  );
+    if (!roleId) {
+      throw { status: 500, message: "Default role is missing" };
+    }
 
-  return result.rows[0];
+    try {
+      const result = await client.query(
+        `INSERT INTO users (name, email, password_hash, role_id)
+         VALUES ($1, $2, $3, $4)
+         RETURNING id, email`,
+        [name, email, hashed, roleId]
+      );
+
+      return result.rows[0];
+    } catch (err) {
+      if (err.code === "23505") {
+        throw { status: 409, message: "Email already exists" };
+      }
+
+      throw err;
+    }
+  });
 };
 
 const login = async ({ email, password }) => {

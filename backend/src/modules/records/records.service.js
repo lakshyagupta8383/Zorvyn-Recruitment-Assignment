@@ -1,4 +1,5 @@
 const pool = require("../../db/pool");
+const withTransaction = require("../../db/transaction");
 const { ROLES } = require("../../constants/roles");
 
 const readAllRoles = new Set([ROLES.ADMIN, ROLES.ANALYST]);
@@ -28,8 +29,8 @@ const serializeRecord = (row) => {
   };
 };
 
-const getCategoryForUser = async (categoryId, user) => {
-  const result = await pool.query(
+const getCategoryForUser = async (categoryId, user, db = pool) => {
+  const result = await db.query(
     `
       SELECT id, created_by, is_system
       FROM categories
@@ -65,7 +66,7 @@ const buildAccessScope = (user, alias = "r") => {
   return { clauses, params, nextIdx: idx };
 };
 
-const getRecordById = async (id, user, { includeDeleted = false } = {}) => {
+const getRecordById = async (id, user, { includeDeleted = false } = {}, db = pool) => {
   const scope = buildAccessScope(user);
   const clauses = [...scope.clauses];
   const params = [...scope.params];
@@ -79,7 +80,7 @@ const getRecordById = async (id, user, { includeDeleted = false } = {}) => {
   params.push(id);
   idx += 1;
 
-  const result = await pool.query(
+  const result = await db.query(
     `
       SELECT
         r.id,
@@ -245,109 +246,115 @@ const searchRecords = async ({ user, q, page, limit }) => {
 };
 
 const createRecord = async (data, user) => {
-  await getCategoryForUser(data.category_id, user);
+  return withTransaction(async (client) => {
+    await getCategoryForUser(data.category_id, user, client);
 
-  const result = await pool.query(
-    `
-      INSERT INTO records (amount, type, category_id, date, notes, created_by)
-      VALUES ($1, $2, $3, $4, $5, $6)
-      RETURNING id
-    `,
-    [data.amount, data.type, data.category_id, data.date, data.notes || null, user.id]
-  );
+    const result = await client.query(
+      `
+        INSERT INTO records (amount, type, category_id, date, notes, created_by)
+        VALUES ($1, $2, $3, $4, $5, $6)
+        RETURNING id
+      `,
+      [data.amount, data.type, data.category_id, data.date, data.notes || null, user.id]
+    );
 
-  return getRecordById(result.rows[0].id, user, { includeDeleted: true });
+    return getRecordById(result.rows[0].id, user, { includeDeleted: true }, client);
+  });
 };
 
 const updateRecord = async (id, updates, user) => {
-  const current = await getRecordById(id, user, { includeDeleted: true });
+  return withTransaction(async (client) => {
+    const current = await getRecordById(id, user, { includeDeleted: true }, client);
 
-  if (!current || current.deleted_at) {
-    throw { status: 404, message: "Record not found" };
-  }
+    if (!current || current.deleted_at) {
+      throw { status: 404, message: "Record not found" };
+    }
 
-  if (!canManageAll(user) && current.created_by !== user.id) {
-    throw { status: 403, message: "Forbidden" };
-  }
+    if (!canManageAll(user) && current.created_by !== user.id) {
+      throw { status: 403, message: "Forbidden" };
+    }
 
-  if (updates.category_id) {
-    await getCategoryForUser(updates.category_id, user);
-  }
+    if (updates.category_id) {
+      await getCategoryForUser(updates.category_id, user, client);
+    }
 
-  const fields = [];
-  const params = [];
-  let idx = 1;
+    const fields = [];
+    const params = [];
+    let idx = 1;
 
-  if (updates.amount !== undefined) {
-    fields.push(`amount = $${idx}`);
-    params.push(updates.amount);
-    idx += 1;
-  }
+    if (updates.amount !== undefined) {
+      fields.push(`amount = $${idx}`);
+      params.push(updates.amount);
+      idx += 1;
+    }
 
-  if (updates.type !== undefined) {
-    fields.push(`type = $${idx}`);
-    params.push(updates.type);
-    idx += 1;
-  }
+    if (updates.type !== undefined) {
+      fields.push(`type = $${idx}`);
+      params.push(updates.type);
+      idx += 1;
+    }
 
-  if (updates.category_id !== undefined) {
-    fields.push(`category_id = $${idx}`);
-    params.push(updates.category_id);
-    idx += 1;
-  }
+    if (updates.category_id !== undefined) {
+      fields.push(`category_id = $${idx}`);
+      params.push(updates.category_id);
+      idx += 1;
+    }
 
-  if (updates.date !== undefined) {
-    fields.push(`date = $${idx}`);
-    params.push(updates.date);
-    idx += 1;
-  }
+    if (updates.date !== undefined) {
+      fields.push(`date = $${idx}`);
+      params.push(updates.date);
+      idx += 1;
+    }
 
-  if (updates.notes !== undefined) {
-    fields.push(`notes = $${idx}`);
-    params.push(updates.notes);
-    idx += 1;
-  }
+    if (updates.notes !== undefined) {
+      fields.push(`notes = $${idx}`);
+      params.push(updates.notes);
+      idx += 1;
+    }
 
-  fields.push(`updated_at = NOW()`);
+    fields.push(`updated_at = NOW()`);
 
-  await pool.query(
-    `
-      UPDATE records
-      SET ${fields.join(", ")}
-      WHERE id = $${idx}
-    `,
-    [...params, id]
-  );
+    await client.query(
+      `
+        UPDATE records
+        SET ${fields.join(", ")}
+        WHERE id = $${idx}
+      `,
+      [...params, id]
+    );
 
-  return getRecordById(id, user, { includeDeleted: true });
+    return getRecordById(id, user, { includeDeleted: true }, client);
+  });
 };
 
 const deleteRecord = async (id, user) => {
-  const current = await getRecordById(id, user, { includeDeleted: true });
+  return withTransaction(async (client) => {
+    const current = await getRecordById(id, user, { includeDeleted: true }, client);
 
-  if (!current || current.deleted_at) {
-    throw { status: 404, message: "Record not found" };
-  }
+    if (!current || current.deleted_at) {
+      throw { status: 404, message: "Record not found" };
+    }
 
-  if (!canManageAll(user) && current.created_by !== user.id) {
-    throw { status: 403, message: "Forbidden" };
-  }
+    if (!canManageAll(user) && current.created_by !== user.id) {
+      throw { status: 403, message: "Forbidden" };
+    }
 
-  const result = await pool.query(
-    `
-      UPDATE records
-      SET deleted_at = NOW(), updated_at = NOW()
-      WHERE id = $1 AND deleted_at IS NULL
-      RETURNING id
-    `,
-    [id]
-  );
+    const result = await client.query(
+      `
+        UPDATE records
+        SET deleted_at = NOW(), updated_at = NOW()
+        WHERE id = $1 AND deleted_at IS NULL
+        RETURNING id
+      `,
+      [id]
+    );
 
-  if (!result.rows.length) {
-    throw { status: 404, message: "Record not found" };
-  }
+    if (!result.rows.length) {
+      throw { status: 404, message: "Record not found" };
+    }
 
-  return { deleted: true };
+    return { deleted: true };
+  });
 };
 
 module.exports = {
