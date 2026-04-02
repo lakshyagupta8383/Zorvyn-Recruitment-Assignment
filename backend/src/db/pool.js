@@ -8,11 +8,11 @@ const pool = new Pool({
 
 module.exports = pool;
 
-pool.connect()
-  .then(() => console.log('DB connected'))
-  .catch((err) => {
-    console.error('DB connection error:', err.message);
-    process.exit(1);
-  });
-console.log("DB URL:", process.env.DATABASE_URL);
-module.exports = pool;
+if (process.env.NODE_ENV !== 'test') {
+  pool.connect()
+    .then(() => console.log('DB connected'))
+    .catch((err) => {
+      console.error('DB connection error:', err.message);
+      process.exit(1);
+    });
+}
