@@ -117,9 +117,9 @@ Modules:
 
 ### Records
 
-* `GET /records?page=1&limit=10&type=expense&category_id=<uuid>&from=2024-01-01&to=2024-01-31`
-* `GET /records/search?q=rent&page=1&limit=10`
-* `GET /records/:id`
+* `GET /records?page=1&limit=10&type=expense&category_id=<uuid>&from=2024-01-01&to=2024-01-31` (analyst/admin only)
+* `GET /records/search?q=rent&page=1&limit=10` (analyst/admin only)
+* `GET /records/:id` (analyst/admin only)
 * `POST /records` (admin only)
 * `PATCH /records/:id` (admin only)
 * `DELETE /records/:id` (admin only)
@@ -147,8 +147,7 @@ Modules:
 | View own profile (`/auth/me`) | Yes | Yes | Yes |
 | View dashboard summary | Yes | Yes | Yes |
 | View advanced analytics | No | Yes | Yes |
-| Read own records | Yes | Yes | Yes |
-| Read all records | No | Yes | Yes |
+| Read records | No | Yes | Yes |
 | Search records | No | Yes | Yes |
 | Create records | No | No | Yes |
 | Update records | No | No | Yes |
@@ -365,7 +364,7 @@ Key design decisions:
 * JWT is used without refresh tokens.
 * Categories can be system-defined or user-created.
 * Only `admin` can create, update, or delete financial records.
-* `viewer` can only read its own records and the base dashboard summary.
+* `viewer` can only read dashboard data and its own profile.
 * `analyst` can read all permitted records and access advanced dashboard analytics.
 
 ---
