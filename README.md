@@ -99,9 +99,23 @@ Modules:
 
 ## Role-Based Access Control
 
-* Viewer → read-only + basic summary
-* Analyst → read + advanced analytics + search
-* Admin → full access
+| Capability | Viewer | Analyst | Admin |
+| --- | --- | --- | --- |
+| Register / login / logout | Yes | Yes | Yes |
+| View own profile (`/auth/me`) | Yes | Yes | Yes |
+| Create records | Yes | Yes | Yes |
+| Read own records | Yes | Yes | Yes |
+| Read all records | No | Yes | Yes |
+| Search records | No | Yes | Yes |
+| Update own records | Yes | Yes | Yes |
+| Delete own records | Yes | Yes | Yes |
+| Update any record | No | No | Yes |
+| Delete any record | No | No | Yes |
+| Access `/users` module | No | No | Yes |
+| Assign or change roles | No | No | Yes |
+| Activate / deactivate users | No | No | Yes |
+| View dashboard basic summary | Yes | Yes | Yes |
+| View advanced analytics | No | Yes | Yes |
 
 Inactive users are restricted from accessing the system.
 
