@@ -1,6 +1,6 @@
 const jwt = require("jsonwebtoken");
-const pool = require("../db/pool");
 const { jwtSecret } = require("../config/env");
+const authRepository = require("../repositories/auth.repository");
 
 const authMiddleware = async (req, res, next) => {
   try {
@@ -25,27 +25,16 @@ const authMiddleware = async (req, res, next) => {
     }
 
     // check if token is invalidated (logout)
-    const sessionCheck = await pool.query(
-      "SELECT is_valid FROM sessions WHERE token = $1",
-      [token]
-    );
+    const sessionCheck = await authRepository.findSessionByToken(token);
 
-    if (sessionCheck.rows.length && !sessionCheck.rows[0].is_valid) {
+    if (sessionCheck && !sessionCheck.is_valid) {
       return res.status(401).json({
         error: { message: "Token invalidated", code: 401 }
       });
     }
 
     // fetch user from DB (never trust JWT blindly)
-    const result = await pool.query(
-      `SELECT u.id, u.status, r.name as role
-       FROM users u
-       JOIN roles r ON u.role_id = r.id
-       WHERE u.id = $1`,
-      [decoded.id]
-    );
-
-    const user = result.rows[0];
+    const user = await authRepository.findUserProfileById(decoded.id);
 
     if (!user) {
       return res.status(401).json({

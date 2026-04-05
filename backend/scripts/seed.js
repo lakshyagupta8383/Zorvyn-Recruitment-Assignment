@@ -1,5 +1,6 @@
 require("dotenv").config({
   path: require("path").resolve(__dirname, "../.env"),
+  quiet: true,
 });
 
 const bcrypt = require("bcrypt");

@@ -2,6 +2,9 @@ const { z } = require("zod");
 
 const errorHandler = require("../../src/middlewares/error.middleware");
 
+beforeEach(() => jest.spyOn(console, "error").mockImplementation(() => {}));
+afterEach(() => jest.restoreAllMocks());
+
 describe("error middleware", () => {
   test("returns 400 for Zod validation errors", () => {
     let err;

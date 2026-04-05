@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "jest --runInBand",
+    "test": "jest --runInBand --forceExit",
     "test:unit": "jest --runInBand tests/db/transaction.test.js",
     "test:integration": "jest --runInBand tests/auth/auth.test.js tests/categories/categories.test.js tests/users/users.test.js tests/records/records.test.js tests/dashboard/dashboard.test.js",
     "test:dashboard": "jest --runInBand tests/dashboard/dashboard.test.js",
