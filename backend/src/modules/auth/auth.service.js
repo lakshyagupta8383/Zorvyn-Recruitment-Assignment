@@ -3,6 +3,7 @@ const withTransaction = require("../../db/transaction");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const { ROLES } = require("../../constants/roles");
+const { jwtSecret } = require("../../config/env");
 
 const register = async ({ name, email, password }) => {
   return withTransaction(async (client) => {
@@ -74,7 +75,7 @@ const login = async ({ email, password }) => {
 
   const token = jwt.sign(
     { id: user.id, role: user.role },
-    process.env.JWT_SECRET,
+    jwtSecret,
     { expiresIn: "1d" }
   );
 

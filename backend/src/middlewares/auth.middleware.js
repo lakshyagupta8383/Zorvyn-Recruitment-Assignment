@@ -1,5 +1,6 @@
 const jwt = require("jsonwebtoken");
 const pool = require("../db/pool");
+const { jwtSecret } = require("../config/env");
 
 const authMiddleware = async (req, res, next) => {
   try {
@@ -16,7 +17,7 @@ const authMiddleware = async (req, res, next) => {
     // verify JWT
     let decoded;
     try {
-      decoded = jwt.verify(token, process.env.JWT_SECRET);
+      decoded = jwt.verify(token, jwtSecret);
     } catch {
       return res.status(401).json({
         error: { message: "Invalid token", code: 401 }

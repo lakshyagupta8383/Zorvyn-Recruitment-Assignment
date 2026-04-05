@@ -10,11 +10,11 @@ The system is designed with a focus on clean architecture, maintainability, and 
 
 ## Tech Stack
 
-* Node.js
-* Express.js
-* PostgreSQL
-* JWT Authentication
-* Zod (validation)
+* Node.js for lightweight server-side execution and broad ecosystem support.
+* Express.js for a minimal HTTP layer and modular routing.
+* PostgreSQL for relational modeling, joins, and analytics queries.
+* JWT authentication for stateless access control.
+* Zod for runtime request validation.
 
 ---
 
@@ -334,19 +334,17 @@ Key design decisions:
 
 ## Setup Instructions
 
-1. Clone the repository.
-2. Install dependencies:
-   `npm install`
-3. Create `backend/.env` with:
+1. Clone the repository and enter the backend folder.
+2. Install dependencies and create `backend/.env` with:
    * `DATABASE_URL=your_db_url`
    * `JWT_SECRET=your_secret`
    * `PORT=3000`
-4. Run migrations:
-   `npm run migrate`
-5. Seed demo data:
-   `npm run seed`
-6. Start the backend:
-   `npm run dev`
+3. Run migrations, seed the demo data, and start the server:
+   ```bash
+   npm run migrate
+   npm run seed
+   npm run dev
+   ```
 
 ---
 
