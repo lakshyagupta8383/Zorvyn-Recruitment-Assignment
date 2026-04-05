@@ -6,6 +6,7 @@ const categoriesRoutes = require("./modules/categories/categories.routes");
 const usersRoutes = require("./modules/users/users.routes");
 const recordsRoutes = require("./modules/records/records.routes");
 const rateLimit = require("./middlewares/rate-limit.middleware");
+const { openApiDocument, swaggerUiHtml } = require("./docs/openapi");
 const errorHandler = require("./middlewares/error.middleware");
 
 const app = express();
@@ -17,6 +18,14 @@ app.use(rateLimit());
 // health check
 app.get("/", (req, res) => {
   res.send("API running...");
+});
+
+app.get("/openapi.json", (req, res) => {
+  res.json(openApiDocument);
+});
+
+app.get("/docs", (req, res) => {
+  res.type("html").send(swaggerUiHtml);
 });
 
 // routes

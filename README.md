@@ -193,6 +193,16 @@ backend/
 | `JWT_SECRET` | `super-secret-value` | JWT signing key |
 | `PORT` | `3000` | HTTP port used by the server |
 
+## Demo Credentials
+
+Run `npm run seed` to load the fixed demo accounts below.
+
+| Role | Email | Password |
+| --- | --- | --- |
+| Admin | `admin@zorvyn.com` | `admin123` |
+| Analyst | `analyst@zorvyn.com` | `analyst123` |
+| Viewer | `viewer@zorvyn.com` | `viewer123` |
+
 ## API Documentation
 
 ### Authentication
@@ -237,6 +247,12 @@ backend/
 
 - The full collection is available in [`postman_collection.json`](./postman_collection.json).
 - It includes example headers, request bodies, and sample responses for every endpoint.
+
+## Swagger / OpenAPI
+
+- Live docs are served from `GET /docs`.
+- The OpenAPI spec is available at `GET /openapi.json`.
+- The Swagger UI reads directly from the spec, so it stays aligned with the current API surface.
 
 ## Security & Validation
 

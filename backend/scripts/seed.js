@@ -7,7 +7,7 @@ const bcrypt = require("bcrypt");
 const pool = require("../src/db/pool");
 const withTransaction = require("../src/db/transaction");
 
-const seedUsers = [
+const DEMO_CREDENTIALS = [
   {
     name: "Seed Admin",
     email: "admin@zorvyn.com",
@@ -30,6 +30,8 @@ const seedUsers = [
     status: "active",
   },
 ];
+
+const seedUsers = DEMO_CREDENTIALS;
 
 const seedCategories = [
   { name: "Salary", is_system: true },
@@ -136,9 +138,9 @@ const run = async () => {
 
   console.log("Seed completed.");
   console.log("Login credentials:");
-  console.log("  admin@zorvyn.com / admin123");
-  console.log("  analyst@zorvyn.com / analyst123");
-  console.log("  viewer@zorvyn.com / viewer123");
+  for (const user of DEMO_CREDENTIALS) {
+    console.log(`  ${user.email} / ${user.password}`);
+  }
 };
 
 run()

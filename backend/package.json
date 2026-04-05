@@ -16,10 +16,14 @@
     "migrate:create": "node-pg-migrate create"
   },
   "jest": {
-    "setupFiles": ["<rootDir>/tests/setup.js"],
-    "testMatch": ["**/tests/**/*.test.js"]
+    "setupFiles": [
+      "<rootDir>/tests/setup.js"
+    ],
+    "testMatch": [
+      "**/tests/**/*.test.js"
+    ]
   },
-    "keywords": [],
+  "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
@@ -29,7 +33,8 @@
     "jsonwebtoken": "^9.0.3",
     "node-pg-migrate": "^8.0.4",
     "pg": "^8.20.0",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1",
     "zod": "^4.3.6"
   }
-  
 }
