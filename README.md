@@ -254,6 +254,55 @@ Run `npm run seed` to load the fixed demo accounts below.
 - The OpenAPI spec is available at `GET /openapi.json`.
 - The Swagger UI reads directly from the spec, so it stays aligned with the current API surface.
 
+## Stress Testing
+
+Use the bundled k6 script to simulate a realistic authenticated workflow against the API.
+
+### Test Script
+
+- Script path: [`backend/scripts/k6-stress.js`](./backend/scripts/k6-stress.js)
+- Base URL: `http://localhost:3000`
+- Flow: login → create record → fetch records → analytics
+- Metrics: latency, error rate, throughput, and response checks
+
+### Load Profile
+
+- Ramp from `50` to `300` virtual users over `60s`
+- Sustain peak load for `2m`
+- Target `http_req_duration p(95) < 500ms`
+- Target `http_req_failed < 1%`
+
+### Required Parameters
+
+- `BASE_URL=http://localhost:3000`
+- `ADMIN_EMAIL=admin@zorvyn.com`
+- `ADMIN_PASSWORD=admin123`
+- `ANALYST_EMAIL=analyst@zorvyn.com`
+- `ANALYST_PASSWORD=analyst123`
+- `CATEGORY_ID=<valid-category-uuid>` when you want to skip category lookup during setup
+
+### Recommended Backend Test Settings
+
+- `RATE_LIMIT_DISABLED=true` to remove the in-memory limiter during load testing
+- `RATE_LIMIT_MAX=100000` and `RATE_LIMIT_WINDOW_MS=900000` if you want to keep limiting enabled but make it test-friendly
+
+### Run Command
+
+```bash
+k6 run \
+  -e BASE_URL=http://localhost:3000 \
+  -e ADMIN_EMAIL=admin@zorvyn.com \
+  -e ADMIN_PASSWORD=admin123 \
+  -e ANALYST_EMAIL=analyst@zorvyn.com \
+  -e ANALYST_PASSWORD=analyst123 \
+  -e CATEGORY_ID=<valid-category-uuid> \
+  backend/scripts/k6-stress.js
+```
+
+### Results
+
+![Stress test results](./docs/stressTesting.png)
+
 ## Security & Validation
 
 - JWTs are signed with `JWT_SECRET` and have explicit expiry.
