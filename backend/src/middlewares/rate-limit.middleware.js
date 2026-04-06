@@ -3,8 +3,13 @@ const buckets = new Map();
 const rateLimit = ({
   windowMs = 15 * 60 * 1000,
   max = 1000,
+  enabled = true,
 } = {}) => {
   return (req, res, next) => {
+    if (!enabled) {
+      return next();
+    }
+
     const key = req.ip || req.headers["x-forwarded-for"] || "unknown";
     const now = Date.now();
     const bucket = buckets.get(key);

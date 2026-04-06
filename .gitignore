@@ -1,0 +1,24 @@
+tools/k6/k6.tar.gz
+tools/k6/k6-v0.49.0-linux-amd64/
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Env files
+.env
+.env.*
+
+# OS/editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Test/build outputs
+coverage/
+dist/
+build/

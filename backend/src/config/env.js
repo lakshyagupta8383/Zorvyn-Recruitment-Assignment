@@ -15,4 +15,9 @@ module.exports = {
   port: process.env.PORT || 3000,
   dbUrl: process.env.DATABASE_URL,
   jwtSecret: process.env.JWT_SECRET,
+  rateLimit: {
+    enabled: process.env.RATE_LIMIT_DISABLED !== "true",
+    windowMs: Number(process.env.RATE_LIMIT_WINDOW_MS || 15 * 60 * 1000),
+    max: Number(process.env.RATE_LIMIT_MAX || 1000),
+  },
 };

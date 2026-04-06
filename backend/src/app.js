@@ -6,6 +6,7 @@ const categoriesRoutes = require("./modules/categories/categories.routes");
 const usersRoutes = require("./modules/users/users.routes");
 const recordsRoutes = require("./modules/records/records.routes");
 const rateLimit = require("./middlewares/rate-limit.middleware");
+const env = require("./config/env");
 const { openApiDocument, swaggerUiHtml } = require("./docs/openapi");
 const errorHandler = require("./middlewares/error.middleware");
 
@@ -13,7 +14,7 @@ const app = express();
 
 // middlewares
 app.use(express.json());
-app.use(rateLimit());
+app.use(rateLimit(env.rateLimit));
 
 // health check
 app.get("/", (req, res) => {

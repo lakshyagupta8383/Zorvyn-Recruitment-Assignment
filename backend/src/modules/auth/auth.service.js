@@ -1,31 +1,45 @@
+const pool = require("../../db/pool");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const { ROLES } = require("../../constants/roles");
-const { jwtSecret } = require("../../config/env");
-const authRepository = require("../../repositories/auth.repository");
-const userRepository = require("../../repositories/user.repository");
 
 const register = async ({ name, email, password }) => {
-  const hashed = await bcrypt.hash(password, 10);
-  const roleId = await authRepository.findRoleIdByName(ROLES.VIEWER);
+  const existing = await pool.query(
+    "SELECT id FROM users WHERE email = $1",
+    [email]
+  );
 
-  if (!roleId) {
-    throw { status: 500, message: "Default role is missing" };
+  if (existing.rows.length) {
+    throw { status: 409, message: "Email already exists" };
   }
 
-  const user = await userRepository.createUser({
-    name,
-    email,
-    passwordHash: hashed,
-    roleId,
-    status: "active",
-  });
+  const hashed = await bcrypt.hash(password, 10);
 
-  return { id: user.id, email: user.email };
+  const roleRes = await pool.query(
+    "SELECT id FROM roles WHERE LOWER(name) = 'viewer'"
+  );
+
+  const roleId = roleRes.rows[0].id;
+
+  const result = await pool.query(
+    `INSERT INTO users (name, email, password_hash, role_id)
+     VALUES ($1, $2, $3, $4)
+     RETURNING id, email`,
+    [name, email, hashed, roleId]
+  );
+
+  return result.rows[0];
 };
 
 const login = async ({ email, password }) => {
-  const user = await authRepository.findUserForLogin(email);
+  const result = await pool.query(
+    `SELECT u.id, u.password_hash, u.status, r.name as role
+     FROM users u
+     JOIN roles r ON u.role_id = r.id
+     WHERE u.email = $1`,
+    [email]
+  );
+
+  const user = result.rows[0];
 
   if (!user) {
     throw { status: 401, message: "Invalid credentials" };
@@ -43,7 +57,7 @@ const login = async ({ email, password }) => {
 
   const token = jwt.sign(
     { id: user.id, role: user.role },
-    jwtSecret,
+    process.env.JWT_SECRET,
     { expiresIn: "1d" }
   );
 
@@ -51,17 +65,23 @@ const login = async ({ email, password }) => {
 };
 
 const getMe = async (userId) => {
-  const user = await authRepository.findUserProfileById(userId);
+  const result = await pool.query(
+    `SELECT u.id, u.email, r.name as role
+     FROM users u
+     JOIN roles r ON u.role_id = r.id
+     WHERE u.id = $1`,
+    [userId]
+  );
 
-  if (!user) {
-    return null;
-  }
-
-  return { id: user.id, email: user.email, role: user.role };
+  return result.rows[0];
 };
 
 const logout = async (token, userId) => {
-  return authRepository.insertSession(userId, token);
+  await pool.query(
+    `INSERT INTO sessions (user_id, token, is_valid, expires_at)
+     VALUES ($1, $2, false, NOW() + INTERVAL '1 day')`, 
+    [userId, token]
+  );
 };
 
 module.exports = { register, login, getMe, logout };
